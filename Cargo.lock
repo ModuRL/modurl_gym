@@ -55,6 +55,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "box2d-rs"
+version = "0.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5150004def1b5eb8db8c80fac41437dabda563ccc49f8a71dac4ffd132615ba5"
+dependencies = [
+ "bitflags 2.9.4",
+]
+
+[[package]]
 name = "bytemuck"
 version = "1.23.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -643,6 +652,7 @@ dependencies = [
 name = "modurl_gym"
 version = "0.1.0"
 dependencies = [
+ "box2d-rs",
  "candle-core",
  "log",
  "modurl",

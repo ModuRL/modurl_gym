@@ -9,18 +9,40 @@ struct ExpectedOutput {
     reward: f32,
     done: bool,
     truncated: bool,
+    info: Option<serde_json::Value>,
 }
 
 pub(crate) trait Testable {
     fn reset_deterministic(&mut self) -> Result<Tensor, candle_core::Error>;
-    fn set_state(&mut self, state: Tensor);
+    fn set_state(&mut self, state: Tensor, extra_info: Option<serde_json::Value>);
 }
 
-pub(crate) fn test_gym_against_python<T, E>(folder: &str, mut env: T)
-where
+pub(crate) struct Tolerances {
+    reward_tol: f32,
+    obs_tol: f32,
+}
+
+impl Tolerances {
+    pub fn new(reward_tol: f32, obs_tol: f32) -> Self {
+        Self {
+            reward_tol,
+            obs_tol,
+        }
+    }
+}
+
+pub(crate) fn test_gym_against_python<T, E>(
+    folder: &str,
+    mut env: T,
+    tolerances: Option<Tolerances>,
+) where
     T: Gym<Error = E> + Testable,
     E: std::fmt::Debug,
 {
+    let tolerances = tolerances.unwrap_or(Tolerances {
+        reward_tol: 1e-4,
+        obs_tol: 1e-4,
+    });
     // Read the JSON files
     let inputs_path = format!(
         "{}/python_tests/{}/inputs.json",
@@ -60,6 +82,7 @@ where
                     &Device::Cpu,
                 )
                 .expect("Failed to set state from previous output"),
+                expected_outputs[i - 1].info.clone(),
             );
         }
 
@@ -73,39 +96,34 @@ where
             .to_vec1::<f32>()
             .expect("Failed to convert state to vector");
 
-        if step_info.reward != expected.reward {
+        if (step_info.reward - expected.reward).abs() > tolerances.reward_tol {
             panic!(
                 "Mismatch at step {}: expected reward {}, got {}, expected obs {:?}, got {:?}",
                 i, expected.reward, step_info.reward, expected.observation, actual_obs
             );
         }
 
-        if step_info.done {
-            assert!(expected.done, "Expected done to be true at step {}", i);
-            // reset isn't done here we set it at the top of the loop
-        } else {
-            assert!(!expected.done, "Expected done to be false at step {}", i);
-        }
+        assert!(
+            step_info.done == expected.done,
+            "Mismatch at step {}: expected done {}, got {}",
+            i + 1,
+            expected.done,
+            step_info.done
+        );
 
-        if step_info.truncated {
-            assert!(
-                expected.truncated,
-                "Expected truncated to be true at step {}",
-                i
-            );
-        } else {
-            assert!(
-                !expected.truncated,
-                "Expected truncated to be false at step {}",
-                i
-            );
-        }
+        assert!(
+            step_info.truncated == expected.truncated,
+            "Mismatch at step {}: expected truncated {}, got {}",
+            i + 1,
+            expected.truncated,
+            step_info.truncated
+        );
 
         // verify observation matches expected (within a tolerance)
         let obs_len = expected.observation.len();
         for j in 0..obs_len {
             assert!(
-                (actual_obs[j] - expected.observation[j]).abs() < 1e-4,
+                (actual_obs[j] - expected.observation[j]).abs() < tolerances.obs_tol,
                 "Mismatch at step {}, observation index {}: expected {}, got {}",
                 i,
                 j,

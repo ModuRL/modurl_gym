@@ -281,13 +281,13 @@ mod tests {
             Ok(self.state.clone())
         }
 
-        fn set_state(&mut self, state: Tensor) {
+        fn set_state(&mut self, state: Tensor, _: Option<serde_json::Value>) {
             self.state = state;
         }
     }
 
     #[test]
     fn test_cartpole_against_python() {
-        test_gym_against_python("cartpole", CartPoleV1::new(&Device::Cpu));
+        test_gym_against_python("cartpole", CartPoleV1::new(&Device::Cpu), None);
     }
 }

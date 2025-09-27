@@ -190,13 +190,13 @@ mod tests {
             Ok(self.state.clone())
         }
 
-        fn set_state(&mut self, state: Tensor) {
+        fn set_state(&mut self, state: Tensor, _: Option<serde_json::Value>) {
             self.state = state;
         }
     }
 
     #[test]
     fn test_mountain_car_against_python() {
-        test_gym_against_python("mountain_car", MountainCarV0::new(&Device::Cpu));
+        test_gym_against_python("mountain_car", MountainCarV0::new(&Device::Cpu), None);
     }
 }

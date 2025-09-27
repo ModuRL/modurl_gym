@@ -3,9 +3,11 @@ import json
 import os
 import numpy as np
 
-def test_gym(gym_name, output_dir=None):
-    env = gym.make(gym_name)
-    obs = env.reset(seed=123, options={"low": 0.0, "high": 0.0})
+def test_gym(env, output_dir=None, custom_reset=None, custom_info=None):
+    if custom_reset is not None:
+        obs, info, env = custom_reset(env)
+    else:
+        obs = env.reset(seed=123, options={"low": 0.0, "high": 0.0})
 
     # Lists to store inputs and outputs
     inputs = []
@@ -21,11 +23,15 @@ def test_gym(gym_name, output_dir=None):
             "observation": obs.tolist(),
             "reward": float(reward),
             "done": bool(done),
-            "truncated": bool(truncated)
+            "truncated": bool(truncated),
+            "info": info if custom_info is None else custom_info(env, info, obs)
         })
         
         if done:
-            obs = env.reset(seed=123, options={"low": 0.0, "high": 0.0})
+            if custom_reset is not None:
+                obs, _, env = custom_reset(env)
+            else:
+                obs = env.reset(seed=123, options={"low": 0.0, "high": 0.0})
 
     env.close()
 
